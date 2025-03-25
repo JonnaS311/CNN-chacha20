@@ -4,7 +4,7 @@ import os
 import shutil
 
 
-min_images = 5  # Cambia este valor según lo que necesites
+min_images = 10  # Cambia este valor según lo que necesites
 
 
 try:
@@ -24,12 +24,10 @@ print(filtrado)
 
 dataset_dir = os.path.join(path,"lfw-deepfunneled","lfw-deepfunneled")
 for person in os.listdir(dataset_dir):
-    print(person, end= ":")
     person_dir = os.path.join(dataset_dir, person)
     
     if os.path.isdir(person_dir):  # Verifica que es una carpeta
         num_images = len(os.listdir(person_dir))
-        print(num_images)
         if num_images < min_images:
             shutil.rmtree(person_dir)  # Elimina la carpeta completa
 
