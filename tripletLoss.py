@@ -59,3 +59,18 @@ def mean_neg_distance(y_true, embeddings):
 def l2_normalize_layer(x):
     import tensorflow as tf  # Importar tf dentro de la función
     return tf.math.l2_normalize(x, axis=1)
+
+
+def triplet_accuracy(y_true, y_pred):
+    # y_pred contiene los embeddings concatenados: [ancla, positivo, negativo]
+    anchor = y_pred[:, :128]
+    positive = y_pred[:, 128:256]
+    negative = y_pred[:, 256:]
+    
+    # Calcular distancias
+    dist_pos = tf.reduce_sum(tf.square(anchor - positive), axis=1)
+    dist_neg = tf.reduce_sum(tf.square(anchor - negative), axis=1)
+    
+    # Determinar si la distancia positiva es menor que la negativa + margen
+    correct = tf.cast(dist_pos < dist_neg, tf.float32)
+    return tf.reduce_mean(correct)

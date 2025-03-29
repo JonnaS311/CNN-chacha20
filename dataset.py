@@ -4,7 +4,7 @@ import os
 import shutil
 
 
-min_images = 10  # Cambia este valor según lo que necesites
+min_images = 6  # Cambia este valor según lo que necesites
 
 
 try:
@@ -12,7 +12,7 @@ try:
 except:
    print("no existe ese archivo")
 
-path = kagglehub.dataset_download("jessicali9530/lfw-dataset","")
+path = kagglehub.dataset_download("jessicali9530/lfw-dataset")
 
 print("Path to dataset files:", path)
 
