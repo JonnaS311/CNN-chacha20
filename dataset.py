@@ -4,7 +4,7 @@ import os
 import shutil
 
 
-min_images = 6  # Cambia este valor según lo que necesites
+min_images = 100  # Cambia este valor según lo que necesites
 
 
 try:

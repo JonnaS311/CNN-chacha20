@@ -1,13 +1,14 @@
 import tensorflow as tf
-from tripletLoss import triplet_hard_loss, mean_neg_distance, mean_pos_distance, l2_normalize_layer
+from tripletLoss import triplet_hard_loss, mean_neg_distance, mean_pos_distance, l2_normalize_layer, triplet_accuracy
 
 
 # Cargar el modelo guardado (ajusta las funciones personalizadas)
 model = tf.keras.models.load_model(
-    "modelo_entrenado.h5",
+    "modelo_entrenado.keras",
     custom_objects={
         "triplet_hard_loss": triplet_hard_loss,
         "mean_pos_distance": mean_pos_distance,
+        "triplet_accuracy": triplet_accuracy,
         "mean_neg_distance": mean_neg_distance,
         "l2_normalize_layer": l2_normalize_layer
     }

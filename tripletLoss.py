@@ -13,7 +13,7 @@ def pairwise_distances(embeddings):
     distances = tf.maximum(distances, 0.0)  # Evita valores negativos por errores numéricos
     return distances
 
-def triplet_hard_loss(y_true, embeddings, margin=0.2):
+def triplet_hard_loss(y_true, embeddings, margin=0.5):
     """Implementación manual de Triplet Hard Loss."""
     del y_true  # No se usa, solo es requerido por TensorFlow
 
@@ -72,5 +72,5 @@ def triplet_accuracy(y_true, y_pred):
     dist_neg = tf.reduce_sum(tf.square(anchor - negative), axis=1)
     
     # Determinar si la distancia positiva es menor que la negativa + margen
-    correct = tf.cast(dist_pos < dist_neg, tf.float32)
+    correct = tf.cast(dist_pos< dist_neg, tf.float32)
     return tf.reduce_mean(correct)

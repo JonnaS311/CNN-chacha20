@@ -7,10 +7,13 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 import pathlib
 import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.manifold import TSNE
+from tensorflow.keras import regularizers
 from tripletLoss import triplet_hard_loss, mean_neg_distance, mean_pos_distance, l2_normalize_layer, triplet_accuracy
 
 
-size = 50# tamaño en pixeles del modelo 
+size = 50 # tamaño en pixeles del modelo 
 # Ruta a tu dataset
 dataset_path = "./lfw-deepfunneled"  # Cambia esto a la ruta correcta
 data_dir = pathlib.Path(dataset_path)
@@ -22,12 +25,12 @@ def create_embedding_model(embedding_size=128):
         layers.Dropout(0.3),  # Después del primer bloque convolucional
         layers.MaxPooling2D(2,2),
         layers.Conv2D(128, (3,3), activation='relu'),
-        layers.Dropout(0.2),  # Después del primer bloque convolucional
+        layers.Dropout(0.3),  # Después del primer bloque convolucional
         layers.MaxPooling2D(2,2),
         layers.Conv2D(256, (3,3), activation='relu'),
-        layers.Dropout(0.2),  # Después del primer bloque convolucional
+        layers.Dropout(0.3),  # Después del primer bloque convolucional
         layers.GlobalAveragePooling2D(),
-        layers.Dense(embedding_size, activation=None),  # Embedding final sin activación
+        layers.Dense(embedding_size, activation=None, kernel_regularizer=regularizers.l2(0.01)),  # Embedding final sin activación
         layers.Lambda(l2_normalize_layer)  # Normalización L2
     ])
     return model
@@ -57,6 +60,12 @@ def create_siamese_model(embedding_size=128):
     )
 
 model = create_siamese_model()
+
+# Modelo auxiliar solo para extraer embeddings de anclas
+embedding_model = tf.keras.Model(
+    inputs=model.input[0],  # Toma solo el input_anchor
+    outputs=model.layers[-2].output  # Capa antes de la concatenación
+)
 
 def generate_triplets(images, labels):
     batch_size = tf.shape(images)[0]
@@ -93,9 +102,10 @@ def generate_triplets(images, labels):
     
     return (anchors, positives, negatives)
 
+# Modifica la función map_to_triplets para retener las etiquetas originales
 def map_to_triplets(image_batch, label_batch):
     anchors, positives, negatives = generate_triplets(image_batch, label_batch)
-    return (anchors, positives, negatives), tf.zeros_like(label_batch)  # Dummy labels
+    return (anchors, positives, negatives), label_batch  # ¡Ahora retornamos las etiquetas reales!
 
 # Crear dataset de entrenamiento y validación (80% train, 20% val)
 train_dataset = tf.keras.preprocessing.image_dataset_from_directory(
@@ -120,21 +130,51 @@ train_dataset = train_dataset.map(map_to_triplets)
 val_dataset = val_dataset.map(map_to_triplets)
 
 
+def custom_triplet_loss(y_true, y_pred):
+    return triplet_hard_loss(y_true, y_pred[:, :128])  # Usa la misma lógica que la lambda
+
 model.compile(
     optimizer=tf.keras.optimizers.Adam(1e-4),
-    loss=lambda y_true, y_pred: triplet_hard_loss(y_true, y_pred[:, :128]),  # Solo embeddings de ancla
+    loss=custom_triplet_loss, 
     metrics=[triplet_accuracy, mean_pos_distance, mean_neg_distance]
 )
 
 history = model.fit(
     train_dataset,
-    epochs=10,
+    epochs=5,
     validation_data=val_dataset,
     # Asegurar que los datos se pasen como tripletas
     )
 
 
-model.save("modelo_entrenado.h5")
+
+
+# Extraer embeddings y etiquetas del conjunto de validación
+embeddings_val = []
+y_val = []
+
+for batch in val_dataset.take(1):  # Toma 1 batch para visualización
+    (anchors, _, _), labels = batch
+    embeddings = embedding_model.predict(anchors)
+    embeddings_val.extend(embeddings)
+    y_val.extend(labels.numpy())
+
+embeddings_val = np.array(embeddings_val)
+y_val = np.array(y_val)
+
+# Reducción de dimensionalidad con TSNE
+tsne = TSNE(n_components=2, random_state=42)
+embeddings_2d = tsne.fit_transform(embeddings_val)
+
+# Visualización
+plt.figure(figsize=(10, 8))
+plt.scatter(embeddings_2d[:, 0], embeddings_2d[:, 1], c=y_val, cmap='gist_ncar', alpha=0.6)
+plt.colorbar()
+plt.title("Visualización de Embeddings (TSNE)")
+plt.savefig('embeddings_visualization.png')
+plt.close()
+
+model.save("modelo_entrenado.keras")
 
 # Obtener métricas del entrenamiento
 plt.figure(figsize=(12, 4))
